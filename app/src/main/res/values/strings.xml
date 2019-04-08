@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">pasm-YOLOv3-Android</string>
+    <string name="action_OpenGallery">Apri Galleria</string>
+    <string name="action_OpenCamera">Torna a Camera</string>
+</resources>
