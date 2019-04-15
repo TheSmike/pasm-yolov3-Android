@@ -21,6 +21,7 @@ import android.graphics.Bitmap;
 import android.support.v4.os.TraceCompat;
 import android.util.Log;
 
+import org.tensorflow.Operation;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
 import java.io.BufferedReader;
@@ -28,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Vector;
@@ -108,6 +110,12 @@ public class TensorFlowImageClassifier implements Classifier {
 
         c.inferenceInterface = new TensorFlowInferenceInterface(assetManager, modelFilename);
         // The shape of the output is [N, NUM_CLASSES], where N is the batch size.
+        Iterator<Operation> operations = c.inferenceInterface.graph().operations();
+        while (operations.hasNext()){
+            Operation next = operations.next();
+            Log.d(TAG, "operation name: " + next.name());
+        }
+
         int numClasses =
                 (int) c.inferenceInterface.graph().operation(outputName).output(0).shape().size(1);
         Log.i(TAG, "Read " + c.labels.size() + " labels, output layer size is " + numClasses);
