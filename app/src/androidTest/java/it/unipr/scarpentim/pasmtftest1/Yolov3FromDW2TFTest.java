@@ -37,15 +37,19 @@ public class Yolov3FromDW2TFTest {
     Context appContext = InstrumentationRegistry.getTargetContext();
 
 
-    private static final String YOLO_MODEL_FILE = "file:///android_asset/yolov3-tiny-freeze.bp";
-    private static final String YOLO_INPUT_NAME = "yolov3-tiny/net1";
-    private static final String YOLO_OUTPUT_NAMES = "yolov3-tiny/convolutional10/BiasAdd";
+//    private static final String YOLO_MODEL_FILE = "file:///android_asset/yolov3-tiny-freeze.bp";
+//    private static final String YOLO_INPUT_NAME = "yolov3-tiny/net1";
+//    private static final String YOLO_OUTPUT_NAMES = "yolov3-tiny/convolutional10/BiasAdd";
+
+    private static final String YOLO_MODEL_FILE = "file:///android_asset/yolov3_out3.bp";
+    private static final String YOLO_INPUT_NAME = "yolov3/net1";
+    private static final String YOLO_OUTPUT_NAMES = "yolov3/convolutional59/BiasAdd,yolov3/convolutional67/BiasAdd,yolov3/convolutional75/BiasAdd";
 
     private static final int YOLO_BLOCK_SIZE = 32;
-    private static final int YOLO_INPUT_SIZE = 416;
+    private static final int YOLO_INPUT_SIZE = 608;
 
-    //public static final String SAMPLE_IMG = "cargo-bike-with-dog-flickr-grrsh.jpg";
-    public static final String SAMPLE_IMG = "monitor.jpg";
+    public static final String SAMPLE_IMG = "cargo-bike-with-dog-flickr-grrsh.jpg";
+//    public static final String SAMPLE_IMG = "monitor.jpg";
 
     @Test
     public void instatiate(){
@@ -80,13 +84,13 @@ public class Yolov3FromDW2TFTest {
 
         Bitmap loadedImage = getBitmapFromTestAssets(SAMPLE_IMG);
 
-        Bitmap redimBitmap = Bitmap.createScaledBitmap(loadedImage, 416, 416, false);
+        Bitmap redimBitmap = Bitmap.createScaledBitmap(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE, false);
 
         Log.i(TAG, "start = " + System.currentTimeMillis());
         List<Classifier.Recognition> recognitions = detector.recognizeImage(redimBitmap);
         Log.i(TAG, " end  = " + System.currentTimeMillis());
 
-        Log.i(TAG, "recognitions = " + recognitions);
+        Log.i(TAG, "yolov3 recognitions = " + recognitions);
     }
 
     public Bitmap getBitmapFromTestAssets(String fileName) throws IOException {

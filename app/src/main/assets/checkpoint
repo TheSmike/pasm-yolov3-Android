@@ -1,2 +1,0 @@
-model_checkpoint_path: "yolov3-tiny.ckpt"
-all_model_checkpoint_paths: "yolov3-tiny.ckpt"
