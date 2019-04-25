@@ -90,7 +90,7 @@ public class Yolov2FromDarkFlowTest {
 
         Bitmap loadedImage = getBitmapFromTestAssets("cargo-bike-with-dog-flickr-grrsh.jpg");
 
-        Bitmap redimBitmap = Bitmap.createScaledBitmap(loadedImage, 416, 416, false);
+        Bitmap redimBitmap = Bitmap.createScaledBitmap(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE, false);
 
         long timeStart = System.currentTimeMillis();
         List<Classifier.Recognition> recognitions = detector.recognizeImage(redimBitmap);
@@ -101,7 +101,7 @@ public class Yolov2FromDarkFlowTest {
 
         Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
         ImageProcessor processor = new ImageProcessor(testContext);
-        processor.loadImage(redimBitmap);
+        processor.loadImage(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
         Mat mat = processor.drawBoxes(recognitions);
         Mat ultimate = new Mat();
         Imgproc.cvtColor(mat, ultimate, Imgproc.COLOR_RGB2BGR);
