@@ -33,20 +33,22 @@ import static org.junit.Assert.assertEquals;
 @RunWith(AndroidJUnit4.class)
 public class Yolov3FromDW2TFTest {
 
-    private static final String TAG = "pasmTEST";
+    private static final String TAG = "pasm-YoloClassifier";
     Context appContext = InstrumentationRegistry.getTargetContext();
 
 
-//    private static final String YOLO_MODEL_FILE = "file:///android_asset/yolov3-tiny-freeze.bp";
-//    private static final String YOLO_INPUT_NAME = "yolov3-tiny/net1";
-//    private static final String YOLO_OUTPUT_NAMES = "yolov3-tiny/convolutional10/BiasAdd";
+    private static final String YOLO_MODEL_FILE = "file:///android_asset/yolov3-tiny-freeze.bp";
+    private static final String YOLO_INPUT_NAME = "yolov3-tiny/net1";
+    private static final String YOLO_OUTPUT_NAMES = "yolov3-tiny/convolutional10/BiasAdd";
+    private static final int YOLO_INPUT_SIZE = 416;
 
-    private static final String YOLO_MODEL_FILE = "file:///android_asset/yolov3_out3.bp";
-    private static final String YOLO_INPUT_NAME = "yolov3/net1";
-    private static final String YOLO_OUTPUT_NAMES = "yolov3/convolutional59/BiasAdd,yolov3/convolutional67/BiasAdd,yolov3/convolutional75/BiasAdd";
+//    private static final String YOLO_MODEL_FILE = "file:///android_asset/yolov3_out3.bp";
+//    private static final String YOLO_INPUT_NAME = "yolov3/net1";
+//    private static final String YOLO_OUTPUT_NAMES = "yolov3/convolutional59/BiasAdd,yolov3/convolutional67/BiasAdd,yolov3/convolutional75/BiasAdd";
+//    private static final int YOLO_INPUT_SIZE = 608;
 
     private static final int YOLO_BLOCK_SIZE = 32;
-    private static final int YOLO_INPUT_SIZE = 608;
+
 
     public static final String SAMPLE_IMG = "cargo-bike-with-dog-flickr-grrsh.jpg";
 //    public static final String SAMPLE_IMG = "monitor.jpg";

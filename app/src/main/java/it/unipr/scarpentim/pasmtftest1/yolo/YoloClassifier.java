@@ -20,7 +20,9 @@ public class YoloClassifier implements Classifier {
 
 
     // Only return this many results with at least this confidence.
-    private static final int MAX_RESULTS = 5;
+    private static final int MAX_RESULTS = 15;
+
+    private final static float OVERLAP_THRESHOLD = 0.5f;
 
     private static final int NUM_CLASSES = 80;
 
@@ -212,8 +214,7 @@ public class YoloClassifier implements Classifier {
         Trace.beginSection("fetch");
         final int gridWidth = bitmap.getWidth() / blockSize;
         final int gridHeight = bitmap.getHeight() / blockSize;
-        final float[] output =
-                new float[gridWidth * gridHeight * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK];
+        final float[] output = new float[gridWidth * gridHeight * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK];
         inferenceInterface.fetch(outputNames[0], output);
         Trace.endSection();
 
@@ -249,6 +250,7 @@ public class YoloClassifier implements Classifier {
                                     Math.max(0, yPos - h / 2),
                                     Math.min(bitmap.getWidth() - 1, xPos + w / 2),
                                     Math.min(bitmap.getHeight() - 1, yPos + h / 2));
+
                     final float confidence = expit(output[offset + 4]);
 
                     int detectedClass = -1;
@@ -258,6 +260,7 @@ public class YoloClassifier implements Classifier {
                     for (int c = 0; c < NUM_CLASSES; ++c) {
                         classes[c] = output[offset + 5 + c];
                     }
+
                     softmax(classes);
 
                     for (int c = 0; c < NUM_CLASSES; ++c) {
@@ -268,7 +271,7 @@ public class YoloClassifier implements Classifier {
                     }
 
                     final float confidenceInClass = maxClass * confidence;
-                    if (confidenceInClass > 0.01) {
+                    if (confidenceInClass > 0.3) {
                         Log.i(TAG, String.format("%s (%d) %f %s", LABELS[detectedClass], detectedClass, confidenceInClass, rect));
                         pq.add(new Recognition("" + offset, LABELS[detectedClass], confidenceInClass, rect));
                     }
@@ -276,14 +279,67 @@ public class YoloClassifier implements Classifier {
             }
         }
 
-        final ArrayList<Recognition> recognitions = new ArrayList<Recognition>();
-        for (int i = 0; i < Math.min(pq.size(), MAX_RESULTS); ++i) {
-            recognitions.add(pq.poll());
-        }
+        List<Recognition> recognitions = getRecognition(pq);
+
+//        final ArrayList<Recognition> recognitions = new ArrayList<Recognition>();
+//        for (int i = 0; i < Math.min(pq.size(), MAX_RESULTS); ++i) {
+//            recognitions.add(pq.poll());
+//        }
         Trace.endSection(); // "recognizeImage"
 
         return recognitions;
     }
+
+    private List<Recognition> getRecognition(final PriorityQueue<Recognition> priorityQueue) {
+        List<Recognition> recognitions = new ArrayList();
+
+        if (priorityQueue.size() > 0) {
+            // Best recognition
+            Recognition bestRecognition = priorityQueue.poll();
+            recognitions.add(bestRecognition);
+            int i = 1;
+            while(i < MAX_RESULTS) {
+            //for (int i = 0; i < Math.min(priorityQueue.size(), MAX_RESULTS); ++i) {
+                Recognition recognition = priorityQueue.poll();
+                if (recognition == null)
+                    break;
+
+                boolean overlaps = false;
+                for (Recognition previousRecognition : recognitions) {
+                    if (previousRecognition.getTitle().equals( recognition.getTitle())) {
+                        overlaps = overlaps || (getIntersectionProportion(previousRecognition.getLocation(),
+                                recognition.getLocation()) > OVERLAP_THRESHOLD);
+                    }
+                }
+
+                if (!overlaps) {
+                    recognitions.add(recognition);
+                    i++;
+                }
+            }
+        }
+
+        return recognitions;
+    }
+
+    private float getIntersectionProportion(RectF primaryShape, RectF secondaryShape) {
+        if (overlaps(primaryShape, secondaryShape)) {
+            float intersectionSurface = Math.max(0, Math.min(primaryShape.right, secondaryShape.right) - Math.max(primaryShape.left, secondaryShape.left)) *
+                    Math.max(0, Math.min(primaryShape.bottom, secondaryShape.bottom) - Math.max(primaryShape.top, secondaryShape.top));
+
+            float surfacePrimary = Math.abs(primaryShape.right - primaryShape.left) * Math.abs(primaryShape.bottom - primaryShape.top);
+
+            return intersectionSurface / surfacePrimary;
+        }
+
+        return 0f;
+    }
+
+    private boolean overlaps(RectF primary, RectF secondary) {
+        return primary.left < secondary.right && primary.right > secondary.left
+                && primary.top < secondary.bottom && primary.bottom > secondary.top;
+    }
+
 
     @Override
     public void enableStatLogging(final boolean logStats) {

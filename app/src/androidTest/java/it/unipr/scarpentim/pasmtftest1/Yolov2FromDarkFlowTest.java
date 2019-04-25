@@ -4,12 +4,19 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Environment;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 import android.util.Log;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Mat;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 import org.tensorflow.Operation;
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
@@ -18,6 +25,7 @@ import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
 
+import it.unipr.scarpentim.pasmtftest1.img.ImageProcessor;
 import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
 import it.unipr.scarpentim.pasmtftest1.yolo.YoloClassifier;
 
@@ -31,7 +39,7 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public class Yolov2FromDarkFlowTest {
 
-    private static final String TAG = "pasmTEST";
+    private static final String TAG = "pasm-YoloClassifier";
     Context appContext = InstrumentationRegistry.getTargetContext();
     private static final String MODEL_FILE = "file:///android_asset/yolov2-tiny.pb";
 
@@ -71,6 +79,7 @@ public class Yolov2FromDarkFlowTest {
 
     @Test
     public void tryIt() throws IOException {
+        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, appContext, mLoaderCallback);
         Classifier detector = YoloClassifier.create(
                 appContext.getAssets(),
                 YOLO_MODEL_FILE,
@@ -83,9 +92,20 @@ public class Yolov2FromDarkFlowTest {
 
         Bitmap redimBitmap = Bitmap.createScaledBitmap(loadedImage, 416, 416, false);
 
+        long timeStart = System.currentTimeMillis();
         List<Classifier.Recognition> recognitions = detector.recognizeImage(redimBitmap);
+        long timeEnd = System.currentTimeMillis();
+        Log.i(TAG, "duration = " + (timeEnd - timeStart) + " ms");
 
         Log.i(TAG, "recognitions = " + recognitions);
+
+        Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
+        ImageProcessor processor = new ImageProcessor(testContext);
+        processor.loadImage(redimBitmap);
+        Mat mat = processor.drawBoxes(recognitions);
+        Mat ultimate = new Mat();
+        Imgproc.cvtColor(mat, ultimate, Imgproc.COLOR_RGB2BGR);
+        Imgcodecs.imwrite(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/img_yolo/yolov2-boxes.jpg", ultimate);
     }
 
     public Bitmap getBitmapFromTestAssets(String fileName) throws IOException {
@@ -97,4 +117,21 @@ public class Yolov2FromDarkFlowTest {
 
         return bitmap;
     }
+
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(appContext) {
+        @Override
+        // Una volta che OpenCV manager è connesso viene chiamato questo metodo di
+        public void onManagerConnected(int status) {
+            switch (status) {
+                // Una volta che OpenCV manager si è connesso con successo
+                // possiamo abilitare l'interazione con la tlc
+                case LoaderCallbackInterface.SUCCESS:
+                    Log.i(TAG, "OpenCV loaded successfully");
+                    break;
+                default:
+                    super.onManagerConnected(status);
+                    break;
+            }
+        }
+    };
 }

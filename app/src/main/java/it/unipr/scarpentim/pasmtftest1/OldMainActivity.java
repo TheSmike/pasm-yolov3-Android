@@ -8,11 +8,11 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -31,7 +31,6 @@ import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
-import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
@@ -40,7 +39,7 @@ import java.util.List;
 import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
 import it.unipr.scarpentim.pasmtftest1.tensorflow.TensorFlowImageClassifier;
 
-public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
+public class OldMainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
 
     private static final int MY_PERMISSIONS_REQUEST_CAMERA = 1;
@@ -70,20 +69,24 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private static final String OUTPUT_NAME = "final_result";
     private static final String MODEL_FILE = "file:///android_asset/hero_stripped_graph.pb";
     private static final String LABEL_FILE = "file:///android_asset/hero_labels.txt";
-    private Mat rgbImage;
+
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         setContentView(R.layout.activity_main);
         validateCameraPermission();
-
+        initClassifier();
         mOpenCvCameraView= findViewById(R.id.cameraView1);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
+//        mOpenCvCameraView.setMaxFrameSize(1280, 720);
         mOpenCvCameraView.setCvCameraViewListener(this);
+
+        //Log.i(TAG, "mOpenCvCameraView size (w,h):" + mOpenCvCameraView.getWidth() + mOpenCvCameraView.getHeight());
 
     }
 
@@ -227,18 +230,18 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     }
 
     private void validateReadStoragePermission() {
-        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(OldMainActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             Log.i(TAG, "Permission is not granted");
-            ActivityCompat.requestPermissions(MainActivity.this,
+            ActivityCompat.requestPermissions(OldMainActivity.this,
                     new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                     MY_PERMISSIONS_REQUEST_STORAGE);
         }
     }
 
     private void validateCameraPermission() {
-        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(OldMainActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             Log.i(TAG, "Permission for camera is not granted");
-            ActivityCompat.requestPermissions(MainActivity.this,
+            ActivityCompat.requestPermissions(OldMainActivity.this,
                     new String[]{Manifest.permission.CAMERA},
                     MY_PERMISSIONS_REQUEST_CAMERA);
         }
@@ -254,18 +257,12 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 Uri selectedImageUri = data.getData();
                 selectedImagePath = getPath(selectedImageUri);
                 Log.i(TAG, "selectedImagePath: " + selectedImagePath);
-                loadImage(selectedImagePath);
+                //loadImage(selectedImagePath);
                 myBitmap = BitmapFactory.decodeFile(selectedImagePath);
                 ImageView iv = findViewById(R.id.ivGallery);
                 iv.setImageBitmap(myBitmap);
             }
         }
-    }
-
-    public void loadImage(String path) {
-        Mat originalImage = Imgcodecs.imread(path);
-        rgbImage = new Mat();
-        Imgproc.cvtColor(originalImage, rgbImage, Imgproc.COLOR_BGR2RGB);
     }
 
     private String getPath(Uri uri) {
