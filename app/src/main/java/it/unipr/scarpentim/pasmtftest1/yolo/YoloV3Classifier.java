@@ -273,8 +273,8 @@ public class YoloV3Classifier implements Classifier {
                                     + (NUM_BOXES_PER_BLOCK * (NUM_CLASSES + 5)) * x
                                     + (NUM_CLASSES + 5) * b;
 
-                    final float xPos = (x+1 + expit(networkOutput[offset + 0])) * blockSize;
-                    final float yPos = (y+1 + expit(networkOutput[offset + 1])) * blockSize;
+//                    final float xPos = (x+1 + expit(networkOutput[offset + 0])) * blockSize;
+//                    final float yPos = (y+1 + expit(networkOutput[offset + 1])) * blockSize;
 
 //                    final float w = (float) (Math.exp(output[offset + 2]) * ANCHORS[2 * b + 0]) * blockSize;
 //                    final float h = (float) (Math.exp(output[offset + 3]) * ANCHORS[2 * b + 1]) * blockSize;
@@ -285,11 +285,26 @@ public class YoloV3Classifier implements Classifier {
 //                    b.w = exp(x[index + 2*stride]) * biases[2*n]   / w;
 //                    b.h = exp(x[index + 3*stride]) * biases[2*n+1] / h;
 
-                    final float w = (float) (Math.exp(networkOutput[offset + 2]) * ANCHORS[anchorOffset + 2 * b + 0] );
-                    final float h = (float) (Math.exp(networkOutput[offset + 3]) * ANCHORS[anchorOffset + 2 * b + 1]);
+//                    final float w = (float) (Math.exp(networkOutput[offset + 2]) * ANCHORS[anchorOffset + 2 * b + 0] );
+//                    final float h = (float) (Math.exp(networkOutput[offset + 3]) * ANCHORS[anchorOffset + 2 * b + 1] );
 
 
-
+                    final float xPos = (x +  networkOutput[offset + 0]) / gridWidth;
+                    final float yPos = (y + networkOutput[offset + 1]) / gridHeight;
+                    final float w = (float) (Math.exp(networkOutput[offset + 2]) * ANCHORS[anchorOffset + 2 * b + 0] / bitmap.getWidth());
+                    final float h = (float) (Math.exp(networkOutput[offset + 3]) * ANCHORS[anchorOffset + 2 * b + 1] / bitmap.getHeight());
+					/*
+					//https://github.com/pjreddie/darknet/blob/f6d861736038da22c9eb0739dca84003c5a5e275/src/yolo_layer.c
+					box get_yolo_box(float *x, float *biases, int n, int index, int i, int j, int lw, int lh, int w, int h, int stride){
+						box b;
+						b.x = (i + x[index + 0*stride]) / lw;
+						b.y = (j + x[index + 1*stride]) / lh;
+						b.w = exp(x[index + 2*stride]) * biases[2*n]   / w;
+						b.h = exp(x[index + 3*stride]) * biases[2*n+1] / h;
+						return b;
+					}
+					*/
+					
                     final RectF rect =
                             new RectF(
                                     Math.max(0, xPos - w / 2),
@@ -344,4 +359,8 @@ public class YoloV3Classifier implements Classifier {
     public void close() {
         inferenceInterface.close();
     }
+	
+	
+	
+
 }
