@@ -70,7 +70,7 @@ public class ImageProcessor {
 
         for (Classifier.Recognition box : boxes) {
             Log.i(TAG, String.valueOf(box));
-            if (box.getConfidence() > 0.3) {
+            if (box.getConfidence() > 0.2) {
 //                color.val[0] = (color.val[0] + 25) % 255;
 //                color.val[1] = (color.val[1] + 35) % 255;
 //                color.val[2] = (color.val[2] + 45) % 255;
