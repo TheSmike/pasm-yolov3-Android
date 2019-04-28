@@ -32,20 +32,22 @@ public class ImageProcessor {
     private float widthRatio;
     private float heightRatio;
     private Map<String, Scalar> colors;
+    private Scalar WHITE = new Scalar(255,255,255);
+    private Scalar BLACK = new Scalar(0,0,0);
 
     public ImageProcessor(Context appContext, String[] labels) {
         this.appContext = appContext;
 
         colors = new HashMap<>();
 
-        int r = 105;
-        int g = 0;
-        int b = 0;
+        int r = 200;
+        int g = 150;
+        int b = 100;
 
         for (int i = 0; i < labels.length; i++) {
-            r = (r + ((i+0) % 3 == 0 ? 0 : 115)) % 256;
-            g = (g + ((i+1) % 3 == 0 ? 0 : 114)) % 256;
-            b = (b + ((i+2) % 3 == 0 ? 0 : 113)) % 256;
+            r = (r + ((i+0) % 3 == 0 ? 0 : 103)) % 256;
+            g = (g + ((i+1) % 3 == 0 ? 0 : 111)) % 256;
+            b = (b + ((i+2) % 3 == 0 ? 0 : 117)) % 256;
             colors.put(labels[i], new Scalar(r,g,b));
         }
     }
@@ -75,11 +77,19 @@ public class ImageProcessor {
                 Imgproc.rectangle(boxesImage, pt3, pt4, color, FILLED,8);
 
                 pt1.set(new double[] {pt1.x + 2*heightRatio, (pt1.y + 10*heightRatio)});
-                Imgproc.putText(boxesImage, box.getTitle(), pt1, Core.FONT_HERSHEY_SIMPLEX, 0.4 * heightRatio, new Scalar(255,255,255), (int) (1 * heightRatio), LINE_AA);
+                Imgproc.putText(boxesImage, box.getTitle(), pt1, Core.FONT_HERSHEY_SIMPLEX, 0.4 * heightRatio, (isLight(color)?BLACK:WHITE), (int) (1 * heightRatio), LINE_AA);
             }
         }
 
         return boxesImage;
+    }
+
+    private boolean isLight(Scalar color) {
+        double r = color.val[0];
+        double g = color.val[1];
+        double b = color.val[2];
+        double sum = r+g+b;
+        return r + g > 210*2 ||  sum > (225*3);
     }
 
     public void loadImage(Bitmap loadedImage, int yoloWidth, int yoloHeight) {
