@@ -6,121 +6,35 @@ import android.graphics.RectF;
 import android.os.Trace;
 import android.util.Log;
 
+import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
-import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
-
 
 import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
 
 /** An object detector that uses TF and a YOLO model to detect objects. */
-public class YoloClassifier implements Classifier {
-
+public class YoloV3ClassifierUltimate implements Classifier {
 
     // Only return this many results with at least this confidence.
     private static final int MAX_RESULTS = 15;
 
-    private final static float OVERLAP_THRESHOLD = 0.5f;
-
     private static final int NUM_CLASSES = 80;
 
-    private static final int NUM_BOXES_PER_BLOCK = 5 ;
+    private static final int NUM_BOXES_PER_BLOCK = 3 ;
 
-    // TODO(andrewharp): allow loading anchors and classes
-    // from files.
-    private static final double[] ANCHORS = {
-//            1.08, 1.19,
-//            3.42, 4.41,
-//            6.63, 11.38,
-//            9.42, 5.11,
-//            16.62, 10.52
-            0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828
-    };
+    private final static float OVERLAP_THRESHOLD = 0.5f;
+    public static final String FILE_ANDROID_ASSET = "file:///android_asset/";
 
-    private static final String[] LABELS = {
-            "person",
-            "bicycle",
-            "car",
-            "motorbike",
-            "aeroplane",
-            "bus",
-            "train",
-            "truck",
-            "boat",
-            "traffic light",
-            "fire hydrant",
-            "stop sign",
-            "parking meter",
-            "bench",
-            "bird",
-            "cat",
-            "dog",
-            "horse",
-            "sheep",
-            "cow",
-            "elephant",
-            "bear",
-            "zebra",
-            "giraffe",
-            "backpack",
-            "umbrella",
-            "handbag",
-            "tie",
-            "suitcase",
-            "frisbee",
-            "skis",
-            "snowboard",
-            "sports ball",
-            "kite",
-            "baseball bat",
-            "baseball glove",
-            "skateboard",
-            "surfboard",
-            "tennis racket",
-            "bottle",
-            "wine glass",
-            "cup",
-            "fork",
-            "knife",
-            "spoon",
-            "bowl",
-            "banana",
-            "apple",
-            "sandwich",
-            "orange",
-            "broccoli",
-            "carrot",
-            "hot dog",
-            "pizza",
-            "donut",
-            "cake",
-            "chair",
-            "sofa",
-            "pottedplant",
-            "bed",
-            "diningtable",
-            "toilet",
-            "tvmonitor",
-            "laptop",
-            "mouse",
-            "remote",
-            "keyboard",
-            "cell phone",
-            "microwave",
-            "oven",
-            "toaster",
-            "sink",
-            "refrigerator",
-            "book",
-            "clock",
-            "vase",
-            "scissors",
-            "teddy bear",
-            "hair drier",
-            "toothbrush",
-    };
+    private int[] anchors;
+    private String[] labels;
+
     private static final String TAG = "pasm-YoloClassifier";
 
     // Config values.
@@ -132,7 +46,8 @@ public class YoloClassifier implements Classifier {
     private float[] floatValues;
     private String[] outputNames;
 
-    private int blockSize;
+    private int[] blockSize;
+    private int centerOffset;
 
     private boolean logStats = false;
 
@@ -141,12 +56,13 @@ public class YoloClassifier implements Classifier {
     /** Initializes a native TensorFlow session for classifying images. */
     public static Classifier create(
             final AssetManager assetManager,
-            final String modelFilename,
+            final String modelName,
             final int inputSize,
             final String inputName,
             final String outputName,
-            final int blockSize) {
-        YoloClassifier d = new YoloClassifier();
+            final int[] blockSize,
+            final int centerOffset) throws IOException {
+        YoloV3ClassifierUltimate d = new YoloV3ClassifierUltimate();
         d.inputName = inputName;
         d.inputSize = inputSize;
 
@@ -156,31 +72,24 @@ public class YoloClassifier implements Classifier {
         d.floatValues = new float[inputSize * inputSize * 3];
         d.blockSize = blockSize;
 
-        d.inferenceInterface = new TensorFlowInferenceInterface(assetManager, modelFilename);
+        String modelFilename = modelName + ".bp";
+        String labelsFilename = modelName + "-labels.txt";
+        String anchorsFilename = modelName + "-anchors.txt";
+
+        d.inferenceInterface = new TensorFlowInferenceInterface(assetManager, FILE_ANDROID_ASSET + modelFilename);
+
+        InputStream labelsFile = assetManager.open(labelsFilename);
+        InputStream anchorsFile = assetManager.open(anchorsFilename);
+
+        d.labels = streamToLabels(labelsFile);
+        d.anchors = streamToAnchors(anchorsFile);
+
+        d.centerOffset = centerOffset;
 
         return d;
     }
 
-    private YoloClassifier() {}
-
-    private float expit(final float x) {
-        return (float) (1. / (1. + Math.exp(-x)));
-    }
-
-    private void softmax(final float[] vals) {
-        float max = Float.NEGATIVE_INFINITY;
-        for (final float val : vals) {
-            max = Math.max(max, val);
-        }
-        float sum = 0.0f;
-        for (int i = 0; i < vals.length; ++i) {
-            vals[i] = (float) Math.exp(vals[i] - max);
-            sum += vals[i];
-        }
-        for (int i = 0; i < vals.length; ++i) {
-            vals[i] = vals[i] / sum;
-        }
-    }
+    private YoloV3ClassifierUltimate() {}
 
     @Override
     public List<Recognition> recognizeImage(final Bitmap bitmap) {
@@ -210,14 +119,49 @@ public class YoloClassifier implements Classifier {
         inferenceInterface.run(outputNames, logStats);
         Trace.endSection();
 
-        // Copy the output Tensor back into the output array.
-        Trace.beginSection("fetch");
-        final int gridWidth = bitmap.getWidth() / blockSize;
-        final int gridHeight = bitmap.getHeight() / blockSize;
-        final float[] output = new float[gridWidth * gridHeight * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK];
-        inferenceInterface.fetch(outputNames[0], output);
-        Trace.endSection();
+        final ArrayList<Recognition> recognitions = new ArrayList<>();
+        for (int i = 0; i < blockSize.length; i++) {
 
+            // Copy the output Tensor back into the output array.
+            Trace.beginSection("fetch i");
+            int gridWidth = bitmap.getWidth() / blockSize[i];
+            int gridHeight = bitmap.getHeight() / blockSize[i];
+
+            final float[] output = new float[gridWidth * gridHeight * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK];
+            Log.d(TAG,  String.format("output0 size is --> %d * %d * (%d + 5) * %d = %d", gridWidth, gridHeight, NUM_CLASSES, NUM_BOXES_PER_BLOCK, gridWidth * gridHeight * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK ));
+            inferenceInterface.fetch(outputNames[i], output);
+            Trace.endSection();
+
+            populateRecognitions(recognitions, bitmap, output, gridWidth, gridHeight, blockSize[i], i);
+        }
+
+        Trace.endSection(); // "recognizeImage"
+
+        return recognitions;
+    }
+
+
+    @Override
+    public void enableStatLogging(final boolean logStats) {
+        this.logStats = logStats;
+    }
+
+    @Override
+    public String getStatString() {
+        return inferenceInterface.getStatString();
+    }
+
+    @Override
+    public void close() {
+        inferenceInterface.close();
+    }
+
+    @Override
+    public String[] getLabels() {
+        return labels;
+    }
+
+    private void populateRecognitions(ArrayList<Recognition> recognitions, Bitmap bitmap, float[] networkOutput, int gridWidth, int gridHeight, int blockSize, int anchorOffset) {
         // Find the best detections.
         final PriorityQueue<Recognition> pq =
                 new PriorityQueue<Recognition>(
@@ -230,19 +174,22 @@ public class YoloClassifier implements Classifier {
                             }
                         });
 
-        for (int y = 0; y < gridHeight; ++y) {
-            for (int x = 0; x < gridWidth; ++x) {
+        int y;
+        int x;
+        for (y = 0; y < gridHeight; ++y) {
+            for (x = 0; x < gridWidth; ++x) {
                 for (int b = 0; b < NUM_BOXES_PER_BLOCK; ++b) {
                     final int offset =
                             (gridWidth * (NUM_BOXES_PER_BLOCK * (NUM_CLASSES + 5))) * y
                                     + (NUM_BOXES_PER_BLOCK * (NUM_CLASSES + 5)) * x
                                     + (NUM_CLASSES + 5) * b;
 
-                    final float xPos = (x + expit(output[offset + 0])) * blockSize;
-                    final float yPos = (y + expit(output[offset + 1])) * blockSize;
 
-                    final float w = (float) (Math.exp(output[offset + 2]) * ANCHORS[2 * b + 0]) * blockSize;
-                    final float h = (float) (Math.exp(output[offset + 3]) * ANCHORS[2 * b + 1]) * blockSize;
+                    final float xPos = (x + centerOffset + expit(networkOutput[offset + 0])) * blockSize;
+                    final float yPos = (y + centerOffset + expit(networkOutput[offset + 1])) * blockSize;
+
+                    final float w = (float) (Math.exp(networkOutput[offset + 2]) * anchors[anchorOffset * 6 + 2 * b + 0]);
+                    final float h = (float) (Math.exp(networkOutput[offset + 3]) * anchors[anchorOffset * 6 + 2 * b + 1]);
 
                     final RectF rect =
                             new RectF(
@@ -250,17 +197,15 @@ public class YoloClassifier implements Classifier {
                                     Math.max(0, yPos - h / 2),
                                     Math.min(bitmap.getWidth() - 1, xPos + w / 2),
                                     Math.min(bitmap.getHeight() - 1, yPos + h / 2));
-
-                    final float confidence = expit(output[offset + 4]);
+                    final float confidence = expit(networkOutput[offset + 4]);
 
                     int detectedClass = -1;
                     float maxClass = 0;
 
                     final float[] classes = new float[NUM_CLASSES];
                     for (int c = 0; c < NUM_CLASSES; ++c) {
-                        classes[c] = output[offset + 5 + c];
+                        classes[c] = networkOutput[offset + 5 + c]; //percentage of each class
                     }
-
                     softmax(classes);
 
                     for (int c = 0; c < NUM_CLASSES; ++c) {
@@ -271,27 +216,18 @@ public class YoloClassifier implements Classifier {
                     }
 
                     final float confidenceInClass = maxClass * confidence;
-                    if (confidenceInClass > 0.3) {
-                        Log.i(TAG, String.format("%s (%d) %f %s", LABELS[detectedClass], detectedClass, confidenceInClass, rect));
-                        pq.add(new Recognition("" + offset, LABELS[detectedClass], confidenceInClass, rect));
+                    if (confidenceInClass > 0.01) {
+                        Log.i(TAG, String.format("%s (%d) %f %s", labels[detectedClass], detectedClass, confidenceInClass, rect));
+                        pq.add(new Recognition("" + offset, labels[detectedClass], confidenceInClass, rect));
                     }
                 }
             }
         }
 
-        List<Recognition> recognitions = getRecognition(pq);
-
-//        final ArrayList<Recognition> recognitions = new ArrayList<Recognition>();
-//        for (int i = 0; i < Math.min(pq.size(), MAX_RESULTS); ++i) {
-//            recognitions.add(pq.poll());
-//        }
-        Trace.endSection(); // "recognizeImage"
-
-        return recognitions;
+        getRecognition(recognitions, pq);
     }
 
-    private List<Recognition> getRecognition(final PriorityQueue<Recognition> priorityQueue) {
-        List<Recognition> recognitions = new ArrayList();
+    private List<Recognition> getRecognition(ArrayList<Recognition> recognitions, final PriorityQueue<Recognition> priorityQueue) {
 
         if (priorityQueue.size() > 0) {
             // Best recognition
@@ -299,7 +235,7 @@ public class YoloClassifier implements Classifier {
             recognitions.add(bestRecognition);
             int i = 1;
             while(i < MAX_RESULTS) {
-            //for (int i = 0; i < Math.min(priorityQueue.size(), MAX_RESULTS); ++i) {
+                //for (int i = 0; i < Math.min(priorityQueue.size(), MAX_RESULTS); ++i) {
                 Recognition recognition = priorityQueue.poll();
                 if (recognition == null)
                     break;
@@ -340,24 +276,65 @@ public class YoloClassifier implements Classifier {
                 && primary.top < secondary.bottom && primary.bottom > secondary.top;
     }
 
+    private static int[] streamToAnchors(InputStream anchorsFile) throws IOException {
+        List<Integer> labels = new ArrayList<>();
 
-    @Override
-    public void enableStatLogging(final boolean logStats) {
-        this.logStats = logStats;
+        // read it with BufferedReader
+        BufferedReader br = new BufferedReader(new InputStreamReader(anchorsFile));
+
+        String line;
+        while ((line = br.readLine()) != null) {
+            String[] split = line.split(",");
+            for (String s : split) {
+                labels.add(Integer.valueOf(s.trim()));
+            }
+        }
+
+        br.close();
+
+        int[] ints = new int[labels.size()];
+        for (int i = 0; i < labels.size(); i++) {
+            ints[i] = labels.get(i);
+        }
+
+        return ints;
     }
 
-    @Override
-    public String getStatString() {
-        return inferenceInterface.getStatString();
+    private static String[] streamToLabels(InputStream labelsFile) throws IOException {
+
+        List<String> labels = new ArrayList<>();
+
+        // read it with BufferedReader
+        BufferedReader br = new BufferedReader(new InputStreamReader(labelsFile));
+
+        String line;
+        while ((line = br.readLine()) != null) {
+            labels.add(line);
+        }
+
+        br.close();
+
+        return labels.toArray(new String[0]);
     }
 
-    @Override
-    public void close() {
-        inferenceInterface.close();
+
+    private float expit(final float x) {
+        return (float) (1. / (1. + Math.exp(-x)));
     }
 
-    @Override
-    public String[] getLabels() {
-        return new String[0];
+    private void softmax(final float[] vals) {
+        float max = Float.NEGATIVE_INFINITY;
+        for (final float val : vals) {
+            max = Math.max(max, val);
+        }
+        float sum = 0.0f;
+        for (int i = 0; i < vals.length; ++i) {
+            vals[i] = (float) Math.exp(vals[i] - max);
+            sum += vals[i];
+        }
+        for (int i = 0; i < vals.length; ++i) {
+            vals[i] = vals[i] / sum;
+        }
     }
+
 }

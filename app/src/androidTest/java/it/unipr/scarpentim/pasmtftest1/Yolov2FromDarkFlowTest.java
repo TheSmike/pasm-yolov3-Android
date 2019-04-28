@@ -100,9 +100,9 @@ public class Yolov2FromDarkFlowTest {
         Log.i(TAG, "recognitions = " + recognitions);
 
         Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
-        ImageProcessor processor = new ImageProcessor(testContext);
+        ImageProcessor processor = new ImageProcessor(testContext, detector.getLabels());
         processor.loadImage(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
-        Mat mat = processor.drawBoxes(recognitions);
+        Mat mat = processor.drawBoxes(recognitions, 0.2);
         Mat ultimate = new Mat();
         Imgproc.cvtColor(mat, ultimate, Imgproc.COLOR_RGB2BGR);
         Imgcodecs.imwrite(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/img_yolo/yolov2-boxes.jpg", ultimate);

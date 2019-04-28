@@ -13,7 +13,6 @@ import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.opencv.android.BaseLoaderCallback;
@@ -30,7 +29,7 @@ import java.util.List;
 
 import it.unipr.scarpentim.pasmtftest1.img.ImageProcessor;
 import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
-import it.unipr.scarpentim.pasmtftest1.yolo.YoloV3Classifier;
+import it.unipr.scarpentim.pasmtftest1.yolo.YoloV3ClassifierUltimate;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -43,50 +42,62 @@ public class Yolov3DrawRectTest {
     private static final String TAG = "pasm-YoloClassifier";
     Context appContext = InstrumentationRegistry.getTargetContext();
 
-    private static final String YOLO_MODEL_FILE = "file:///android_asset/yolov3_out3.bp";
+    private static final String YOLO_MODEL_FILE = "yolov3_out3";
     private static final String YOLO_INPUT_NAME = "yolov3/net1";
     private static final String YOLO_OUTPUT_NAMES = "yolov3/convolutional59/BiasAdd,yolov3/convolutional67/BiasAdd,yolov3/convolutional75/BiasAdd";
     private static final int YOLO_INPUT_SIZE = 608;
 
-    private static final int YOLO_BLOCK_SIZE = 32;
-
+    private static final int[] YOLO_BLOCK_SIZE = {32, 16, 8};
 
     public static final String SAMPLE_IMG = "cargo-bike-with-dog-flickr-grrsh.jpg";
-//    public static final String SAMPLE_IMG = "monitor.jpg";
 
     @Test
     public void drawImage() throws IOException {
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, appContext, mLoaderCallback);
 
-        YoloV3Classifier detector = (YoloV3Classifier) YoloV3Classifier.create(
+        YoloV3ClassifierUltimate detector = (YoloV3ClassifierUltimate) YoloV3ClassifierUltimate.create(
                 appContext.getAssets(),
                 YOLO_MODEL_FILE,
                 YOLO_INPUT_SIZE,
                 YOLO_INPUT_NAME,
                 YOLO_OUTPUT_NAMES,
-                YOLO_BLOCK_SIZE);
+                YOLO_BLOCK_SIZE,
+                1);
 
-        Bitmap loadedImage = getBitmapFromTestAssets(SAMPLE_IMG);
-
-        Bitmap redimBitmap = Bitmap.createScaledBitmap(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE, false);
-
-        Log.i(TAG, "start = " + System.currentTimeMillis());
-        List<Classifier.Recognition> recognitions = detector.recognizeImage(redimBitmap);
-        Log.i(TAG, " end  = " + System.currentTimeMillis());
-
-        Log.i(TAG, "yolov3 recognitions = " + recognitions);
+        checkPermissions();
+//        Bitmap loadedImage = getBitmapFromTestAssets(SAMPLE_IMG);
 
         Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
+        AssetManager assetManager = testContext.getAssets();
+
+        String pathToImages = "";
+//        String pathToImages = SAMPLE_IMG; // change pathToImages to this for single image
+
+        String[] list = assetManager.list(pathToImages);
+
+        for (int i = 0; i < list.length; i++) {
+            if(list[i].endsWith(".jpg")) {
+                Bitmap loadedImage = getBitmapFromTestAssets(list[i]);
+
+                Bitmap redimBitmap = Bitmap.createScaledBitmap(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE, false);
+
+                long start = System.currentTimeMillis();
+                List<Classifier.Recognition> recognitions = detector.recognizeImage(redimBitmap);
+                long end = System.currentTimeMillis();
+                Log.i(TAG, "execution time = " + (end-start));
+
+                Log.i(TAG, "yolov3 recognitions = " + recognitions);
+
+                ImageProcessor processor = new ImageProcessor(testContext, detector.getLabels());
+                processor.loadImage(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
+                Mat mat = processor.drawBoxes(recognitions, 0.2);
+                Mat ultimate = new Mat();
+                Imgproc.cvtColor(mat, ultimate, Imgproc.COLOR_RGB2BGR);
 
 
-        ImageProcessor processor = new ImageProcessor(testContext);
-        processor.loadImage(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
-        Mat mat = processor.drawBoxes(recognitions);
-        Mat ultimate = new Mat();
-        Imgproc.cvtColor(mat, ultimate, Imgproc.COLOR_RGB2BGR);
-        checkPermissions();
-
-        Imgcodecs.imwrite(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS) + "/img_yolo/boxes.jpg", ultimate);
+                Imgcodecs.imwrite(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/yolo_v3/boxes" + i + ".jpg", ultimate);
+            }
+        }
 
     }
 
@@ -101,7 +112,7 @@ public class Yolov3DrawRectTest {
         Assert.assertEquals(PackageManager.PERMISSION_GRANTED, grantResult);
 
         //Bitmap ultimateImg = Bitmap.createScaledBitmap(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE, false);
-        File d = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "img_yolo");
+        File d = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), "yolo_v3");
         if (!d.exists()) {
             d.mkdirs();
         }

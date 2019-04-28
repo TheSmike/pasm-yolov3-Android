@@ -108,5 +108,7 @@ public interface Classifier {
     String getStatString();
 
     void close();
+
+    String[] getLabels();
 }
 

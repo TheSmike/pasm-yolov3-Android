@@ -28,21 +28,10 @@ public class YoloV3Classifier implements Classifier {
 
     private final static float OVERLAP_THRESHOLD = 0.5f;
 
-    // TODO(andrewharp): allow loading anchors and classes
-    // from files.
+    // TODO(andrewharp): allow loading anchors and classes from files.
     private static final double[] ANCHORS = {
-//            1.08, 1.19,
-//            3.42, 4.41,
-//            6.63, 11.38,
-//            9.42, 5.11,
-//            16.62, 10.52
-
-            //0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828
-            10,14,  23,27,  37,58,  81,82,  135,169,  344,319 //yolov3 tiny
             //10,13,  16,30,  33,23,  30,61,  62,45,  59,119, 116,90,  156,198,  373,326 // yolov3
-            // 116,90,  156,198,  373,326 // yolov3 ultimi 3
-            //116,90,  156,198,  373,326  // yolov3 primi 3
-            //116,90,  156,198,  373,326, 30,61,  62,45,  59,119, 10,13,  16,30,  33,23  // yolov3 reverse
+            116,90,  156,198,  373,326, 30,61,  62,45,  59,119, 10,13,  16,30,  33,23  // yolov3 reverse
     };
 
     private static final String[] LABELS = {
@@ -427,8 +416,11 @@ public class YoloV3Classifier implements Classifier {
     public void close() {
         inferenceInterface.close();
     }
-	
-	
-	
+
+    @Override
+    public String[] getLabels() {
+        throw new UnsupportedOperationException();
+    }
+
 
 }

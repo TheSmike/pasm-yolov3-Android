@@ -211,4 +211,9 @@ public class TensorFlowImageClassifier implements Classifier {
     public void close() {
         inferenceInterface.close();
     }
+
+    @Override
+    public String[] getLabels() {
+        throw new UnsupportedOperationException();
+    }
 }
