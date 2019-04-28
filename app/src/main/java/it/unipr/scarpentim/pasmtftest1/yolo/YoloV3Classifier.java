@@ -20,7 +20,7 @@ import java.util.PriorityQueue;
 import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
 
 /** An object detector that uses TF and a YOLO model to detect objects. */
-public class YoloV3ClassifierUltimate implements Classifier {
+public class YoloV3Classifier implements Classifier {
 
     // Only return this many results with at least this confidence.
     private static final int MAX_RESULTS = 15;
@@ -62,7 +62,7 @@ public class YoloV3ClassifierUltimate implements Classifier {
             final String outputName,
             final int[] blockSize,
             final int centerOffset) throws IOException {
-        YoloV3ClassifierUltimate d = new YoloV3ClassifierUltimate();
+        YoloV3Classifier d = new YoloV3Classifier();
         d.inputName = inputName;
         d.inputSize = inputSize;
 
@@ -89,7 +89,7 @@ public class YoloV3ClassifierUltimate implements Classifier {
         return d;
     }
 
-    private YoloV3ClassifierUltimate() {}
+    private YoloV3Classifier() {}
 
     @Override
     public List<Recognition> recognizeImage(final Bitmap bitmap) {

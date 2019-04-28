@@ -29,7 +29,7 @@ import java.util.List;
 
 import it.unipr.scarpentim.pasmtftest1.img.ImageProcessor;
 import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
-import it.unipr.scarpentim.pasmtftest1.yolo.YoloV3ClassifierUltimate;
+import it.unipr.scarpentim.pasmtftest1.yolo.YoloV3Classifier;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -55,7 +55,7 @@ public class Yolov3DrawRectTest {
     public void drawImage() throws IOException {
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, appContext, mLoaderCallback);
 
-        YoloV3ClassifierUltimate detector = (YoloV3ClassifierUltimate) YoloV3ClassifierUltimate.create(
+        YoloV3Classifier detector = (YoloV3Classifier) YoloV3Classifier.create(
                 appContext.getAssets(),
                 YOLO_MODEL_FILE,
                 YOLO_INPUT_SIZE,
