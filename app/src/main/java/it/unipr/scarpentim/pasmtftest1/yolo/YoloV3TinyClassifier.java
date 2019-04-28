@@ -16,9 +16,8 @@ import java.util.PriorityQueue;
 import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
 
 /** An object detector that uses TF and a YOLO model to detect objects. */
-public class YoloV3Classifier implements Classifier {
-
-
+public class YoloV3TinyClassifier implements Classifier {
+ 
     // Only return this many results with at least this confidence.
     private static final int MAX_RESULTS = 15;
 
@@ -28,21 +27,11 @@ public class YoloV3Classifier implements Classifier {
 
     private final static float OVERLAP_THRESHOLD = 0.5f;
 
-    // TODO(andrewharp): allow loading anchors and classes
-    // from files.
+    // TODO(andrewharp): allow loading anchors and classes from files.
     private static final double[] ANCHORS = {
-//            1.08, 1.19,
-//            3.42, 4.41,
-//            6.63, 11.38,
-//            9.42, 5.11,
-//            16.62, 10.52
-
-            //0.57273, 0.677385, 1.87446, 2.06253, 3.33843, 5.47434, 7.88282, 3.52778, 9.77052, 9.16828
-            10,14,  23,27,  37,58,  81,82,  135,169,  344,319 //yolov3 tiny
-            //10,13,  16,30,  33,23,  30,61,  62,45,  59,119, 116,90,  156,198,  373,326 // yolov3
-            // 116,90,  156,198,  373,326 // yolov3 ultimi 3
-            //116,90,  156,198,  373,326  // yolov3 primi 3
-            //116,90,  156,198,  373,326, 30,61,  62,45,  59,119, 10,13,  16,30,  33,23  // yolov3 reverse
+            //yolov3 tiny
+            81,82,  135,169,  344,319,
+            10,14,  23,27,  37,58,
     };
 
     private static final String[] LABELS = {
@@ -138,7 +127,7 @@ public class YoloV3Classifier implements Classifier {
     private float[] floatValues;
     private String[] outputNames;
 
-    private int blockSize;
+    private int[] blockSize;
 
     private boolean logStats = false;
 
@@ -151,8 +140,8 @@ public class YoloV3Classifier implements Classifier {
             final int inputSize,
             final String inputName,
             final String outputName,
-            final int blockSize) {
-        YoloV3Classifier d = new YoloV3Classifier();
+            final int[] blockSize) {
+        YoloV3TinyClassifier d = new YoloV3TinyClassifier();
         d.inputName = inputName;
         d.inputSize = inputSize;
 
@@ -167,7 +156,7 @@ public class YoloV3Classifier implements Classifier {
         return d;
     }
 
-    private YoloV3Classifier() {}
+    private YoloV3TinyClassifier() {}
 
     private float expit(final float x) {
         return (float) (1. / (1. + Math.exp(-x)));
@@ -218,35 +207,29 @@ public class YoloV3Classifier implements Classifier {
 
         // Copy the output Tensor back into the output array.
         Trace.beginSection("fetch");
-        int blockSize0 = blockSize;
-        int blockSize1 = blockSize/2;
-        int blockSize2 = blockSize/4;
+        int blockSize0 = blockSize[0];
+        int blockSize1 = blockSize[1];
 
         int gridWidth0 = bitmap.getWidth() / blockSize0;
         int gridHeight0 = bitmap.getHeight() / blockSize0;
         int gridWidth1 = bitmap.getWidth() / blockSize1;
         int gridHeight1 = bitmap.getHeight() / blockSize1;
-        int gridWidth2 = bitmap.getWidth() / blockSize2;
-        int gridHeight2 = bitmap.getHeight() / blockSize2;
 
         //output dovrebbe essere di dim: 13 * 13 * ( 80 + 5 ) * 3;
         final float[] output0 = new float[gridWidth0 * gridHeight0 * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK];
         Log.i(TAG,  String.format("output0 size is --> %d * %d * (%d + 5) * %d = %d", gridWidth0, gridHeight0, NUM_CLASSES, NUM_BOXES_PER_BLOCK, gridWidth0 * gridHeight0 * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK ));
 
+        //output dovrebbe essere di dim: 26 * 26 * ( 80 + 5 ) * 3;
         final float[] output1 = new float[gridWidth1 * gridHeight1 * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK];
         Log.i(TAG,  String.format("output1 size is --> %d * %d * (%d + 5) * %d = %d", gridWidth1, gridHeight1, NUM_CLASSES, NUM_BOXES_PER_BLOCK, gridWidth1 * gridHeight1 * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK ));
 
-        final float[] output2 = new float[gridWidth2 * gridHeight2 * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK];
-        Log.i(TAG,  String.format("output2 size is --> %d * %d * (%d + 5) * %d = %d", gridWidth2, gridHeight2, NUM_CLASSES, NUM_BOXES_PER_BLOCK, gridWidth2 * gridHeight2 * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK ));
-
         inferenceInterface.fetch(outputNames[0], output0);
-//        inferenceInterface.fetch(outputNames[1], output1);
-//        inferenceInterface.fetch(outputNames[2], output2);
+        inferenceInterface.fetch(outputNames[1], output1);
         Trace.endSection();
 
         final ArrayList<Recognition> recognitions = new ArrayList<>();
         populateRecognitions(recognitions, bitmap, output0, gridWidth0, gridHeight0, blockSize0, 0);
-//        populateRecognitions(recognitions, bitmap, output1, gridWidth1, gridHeight1, blockSize1, 1); //FIXME non funziona
+        populateRecognitions(recognitions, bitmap, output1, gridWidth1, gridHeight1, blockSize1, 1); //FIXME non funziona
 //        populateRecognitions(recognitions, bitmap, output2, gridWidth2, gridHeight2, blockSize2, 2); //FIXME non funziona
 
         Trace.endSection(); // "recognizeImage"
@@ -267,8 +250,10 @@ public class YoloV3Classifier implements Classifier {
                             }
                         });
 
-        for (int y = 0; y < gridHeight; ++y) {
-            for (int x = 0; x < gridWidth; ++x) {
+        int y;
+        int x;
+        for (y = 0; y < gridHeight; ++y) {
+            for (x = 0; x < gridWidth; ++x) {
                 for (int b = 0; b < NUM_BOXES_PER_BLOCK; ++b) {
                     final int offset =
                             (gridWidth * (NUM_BOXES_PER_BLOCK * (NUM_CLASSES + 5))) * y
@@ -291,11 +276,11 @@ public class YoloV3Classifier implements Classifier {
 //                    final float h = (float) (Math.exp(networkOutput[offset + 3]) * ANCHORS[anchorOffset + 2 * b + 1] );
 
 
-                    final float xPos = (x + 1 + expit(networkOutput[offset + 0])) * blockSize;
-                    final float yPos = (y + 1 + expit(networkOutput[offset + 1])) * blockSize;
+                    final float xPos = (x + expit(networkOutput[offset + 0])) * blockSize;
+                    final float yPos = (y + expit(networkOutput[offset + 1])) * blockSize;
 
-                    final float w = (float) (Math.exp(networkOutput[offset + 2]) * ANCHORS[anchorOffset + 2 * b + 0]) * 10;
-                    final float h = (float) (Math.exp(networkOutput[offset + 3]) * ANCHORS[anchorOffset + 2 * b + 1]) * 10;
+                    final float w = (float) (Math.exp(networkOutput[offset + 2]) * ANCHORS[anchorOffset * 6 + 2 * b + 0]);
+                    final float h = (float) (Math.exp(networkOutput[offset + 3]) * ANCHORS[anchorOffset * 6 + 2 * b + 1]);
 
 
 
@@ -315,12 +300,12 @@ public class YoloV3Classifier implements Classifier {
 					}
 					*/
 
-					//yolov2
+                    //yolov2
 //                    boxes[index].x = (predictions[box_index + 0] + col) / l.side * w;
 //                    boxes[index].y = (predictions[box_index + 1] + row) / l.side * h;
 //                    boxes[index].w = pow(predictions[box_index + 2], (l.sqrt?2:1)) * w;
 //                    boxes[index].h = pow(predictions[box_index + 3], (l.sqrt?2:1)) * h;
-					
+
                     final RectF rect =
                             new RectF(
                                     Math.max(0, xPos - w / 2),
@@ -334,7 +319,7 @@ public class YoloV3Classifier implements Classifier {
 
                     final float[] classes = new float[NUM_CLASSES];
                     for (int c = 0; c < NUM_CLASSES; ++c) {
-                        classes[c] = networkOutput[offset + 5 + c];
+                        classes[c] = networkOutput[offset + 5 + c]; //percentage of each class
                     }
                     softmax(classes);
 
@@ -355,12 +340,7 @@ public class YoloV3Classifier implements Classifier {
             }
         }
 
-
-//        for (int i = 0; i < Math.min(pq.size(), MAX_RESULTS); ++i) {
-//            recognitions.add(pq.poll());
-//        }
-
-        List<Recognition> ret = getRecognition(recognitions, pq);
+        getRecognition(recognitions, pq);
     }
 
     private List<Recognition> getRecognition(ArrayList<Recognition> recognitions, final PriorityQueue<Recognition> priorityQueue) {
@@ -427,8 +407,8 @@ public class YoloV3Classifier implements Classifier {
     public void close() {
         inferenceInterface.close();
     }
-	
-	
-	
+
+
+
 
 }
