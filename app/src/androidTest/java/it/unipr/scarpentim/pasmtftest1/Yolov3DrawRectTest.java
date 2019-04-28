@@ -39,7 +39,7 @@ import it.unipr.scarpentim.pasmtftest1.yolo.YoloV3ClassifierUltimate;
 @RunWith(AndroidJUnit4.class)
 public class Yolov3DrawRectTest {
 
-    private static final String TAG = "pasm-YoloClassifier";
+    private static final String TAG = "pasm-YoloV2Classifier";
     Context appContext = InstrumentationRegistry.getTargetContext();
 
     private static final String YOLO_MODEL_FILE = "yolov3_out3";

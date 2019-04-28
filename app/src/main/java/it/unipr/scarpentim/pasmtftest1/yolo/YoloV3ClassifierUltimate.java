@@ -35,7 +35,7 @@ public class YoloV3ClassifierUltimate implements Classifier {
     private int[] anchors;
     private String[] labels;
 
-    private static final String TAG = "pasm-YoloClassifier";
+    private static final String TAG = "pasm-YoloV2Classifier";
 
     // Config values.
     private String inputName;

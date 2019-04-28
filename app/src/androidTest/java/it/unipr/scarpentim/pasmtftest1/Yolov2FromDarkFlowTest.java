@@ -27,7 +27,7 @@ import java.util.List;
 
 import it.unipr.scarpentim.pasmtftest1.img.ImageProcessor;
 import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
-import it.unipr.scarpentim.pasmtftest1.yolo.YoloClassifier;
+import it.unipr.scarpentim.pasmtftest1.yolo.YoloV2Classifier;
 
 import static org.junit.Assert.*;
 
@@ -39,7 +39,7 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public class Yolov2FromDarkFlowTest {
 
-    private static final String TAG = "pasm-YoloClassifier";
+    private static final String TAG = "pasm-YoloV2Classifier";
     Context appContext = InstrumentationRegistry.getTargetContext();
     private static final String MODEL_FILE = "file:///android_asset/yolov2-tiny.pb";
 
@@ -80,7 +80,7 @@ public class Yolov2FromDarkFlowTest {
     @Test
     public void tryIt() throws IOException {
         OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, appContext, mLoaderCallback);
-        Classifier detector = YoloClassifier.create(
+        Classifier detector = YoloV2Classifier.create(
                 appContext.getAssets(),
                 YOLO_MODEL_FILE,
                 YOLO_INPUT_SIZE,

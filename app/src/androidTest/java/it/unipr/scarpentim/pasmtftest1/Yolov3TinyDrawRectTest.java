@@ -40,7 +40,7 @@ import it.unipr.scarpentim.pasmtftest1.yolo.YoloV3ClassifierUltimate;
 @RunWith(AndroidJUnit4.class)
 public class Yolov3TinyDrawRectTest {
 
-    private static final String TAG = "pasm-YoloClassifier";
+    private static final String TAG = "pasm-YoloV2Classifier";
     Context appContext = InstrumentationRegistry.getTargetContext();
 
 
@@ -73,7 +73,7 @@ public class Yolov3TinyDrawRectTest {
         Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
         AssetManager assetManager = testContext.getAssets();
 
-        String pathToImages = "";
+        String pathToImages = "images/";
 //        String pathToImages = SAMPLE_IMG; // change pathToImages to this for single image
 
         String[] list = assetManager.list(pathToImages);
