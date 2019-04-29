@@ -12,6 +12,7 @@ import android.support.test.runner.AndroidJUnit4;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -40,7 +41,7 @@ import it.unipr.scarpentim.pasmtftest1.yolo.YoloV3Classifier;
 @RunWith(AndroidJUnit4.class)
 public class Yolov3TinyDrawRectTest {
 
-    private static final String TAG = "pasm-YoloV2Classifier";
+    private static final String TAG = "PASM_yolov3";
     Context appContext = InstrumentationRegistry.getTargetContext();
 
 
@@ -73,14 +74,14 @@ public class Yolov3TinyDrawRectTest {
         Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
         AssetManager assetManager = testContext.getAssets();
 
-        String pathToImages = "images/";
+        String pathToImages = "images";
 //        String pathToImages = SAMPLE_IMG; // change pathToImages to this for single image
 
         String[] list = assetManager.list(pathToImages);
 
         for (int i = 0; i < list.length; i++) {
             if(list[i].endsWith(".jpg")) {
-                Bitmap loadedImage = getBitmapFromTestAssets(list[i]);
+                Bitmap loadedImage = getBitmapFromTestAssets(list[i], pathToImages);
 
                 Bitmap redimBitmap = Bitmap.createScaledBitmap(loadedImage, TINY_YOLO_INPUT_SIZE, TINY_YOLO_INPUT_SIZE, false);
 
@@ -93,7 +94,7 @@ public class Yolov3TinyDrawRectTest {
 
                 ImageProcessor processor = new ImageProcessor(testContext, detector.getLabels());
                 processor.loadImage(loadedImage, TINY_YOLO_INPUT_SIZE, TINY_YOLO_INPUT_SIZE);
-                Mat mat = processor.drawBoxes(recognitions, 0.2);
+                Mat mat = processor.drawBoxes(recognitions, 0.18);
                 Mat ultimate = new Mat();
                 Imgproc.cvtColor(mat, ultimate, Imgproc.COLOR_RGB2BGR);
 
@@ -121,11 +122,15 @@ public class Yolov3TinyDrawRectTest {
         }
     }
 
-    public Bitmap getBitmapFromTestAssets(String fileName) throws IOException {
+    private Bitmap getBitmapFromTestAssets(String fileName, String parent) throws IOException {
         Context testContext = InstrumentationRegistry.getInstrumentation().getContext();
         AssetManager assetManager = testContext.getAssets();
 
-        InputStream testInput = assetManager.open(fileName);
+        String prefix = "";
+        if (StringUtils.isNotEmpty(parent))
+            prefix = parent + "/";
+
+        InputStream testInput = assetManager.open(prefix + fileName);
         Bitmap bitmap = BitmapFactory.decodeStream(testInput);
 
         return bitmap;

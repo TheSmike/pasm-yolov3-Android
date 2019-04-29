@@ -9,7 +9,7 @@ import androidx.test.rule.GrantPermissionRule;
 
 public class MyPermissionRequester {
 
-    public static final String TAG = MyPermissionRequester.class.getSimpleName();
+    public static final String TAG = "PASM_yolov3";
 
     public static void request(String... permissions) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

@@ -35,7 +35,7 @@ public class YoloV3Classifier implements Classifier {
     private int[] anchors;
     private String[] labels;
 
-    private static final String TAG = "pasm-YoloV2Classifier";
+    private static final String TAG = "PASM_yolov3";
 
     // Config values.
     private String inputName;
@@ -93,7 +93,7 @@ public class YoloV3Classifier implements Classifier {
 
     @Override
     public List<Recognition> recognizeImage(final Bitmap bitmap) {
-
+        long startNetwork = System.currentTimeMillis();
         // Log this method so that it can be analyzed with systrace.
         Trace.beginSection("recognizeImage");
 
@@ -118,7 +118,9 @@ public class YoloV3Classifier implements Classifier {
         Trace.beginSection("run");
         inferenceInterface.run(outputNames, logStats);
         Trace.endSection();
+        long endNetwork = System.currentTimeMillis();
 
+        long startProcessingOut = System.currentTimeMillis();
         final ArrayList<Recognition> recognitions = new ArrayList<>();
         for (int i = 0; i < blockSize.length; i++) {
 
@@ -134,9 +136,11 @@ public class YoloV3Classifier implements Classifier {
 
             populateRecognitions(recognitions, bitmap, output, gridWidth, gridHeight, blockSize[i], i);
         }
-
+        long endProcessingOut = System.currentTimeMillis();
         Trace.endSection(); // "recognizeImage"
 
+        Log.i(TAG, "       Network time = " + (endNetwork - startNetwork));
+        Log.i(TAG, "postprocessing time = " + (endProcessingOut - startProcessingOut));
         return recognitions;
     }
 
@@ -243,8 +247,9 @@ public class YoloV3Classifier implements Classifier {
                 boolean overlaps = false;
                 for (Recognition previousRecognition : recognitions) {
                     if (previousRecognition.getTitle().equals( recognition.getTitle())) {
-                        overlaps = overlaps || (getIntersectionProportion(previousRecognition.getLocation(),
-                                recognition.getLocation()) > OVERLAP_THRESHOLD);
+//                        overlaps = overlaps || (getIntersectionProportion(previousRecognition.getLocation(),
+//                                recognition.getLocation()) > OVERLAP_THRESHOLD);
+                        overlaps = overlaps || iou(previousRecognition.getLocation(), recognition.getLocation()) > OVERLAP_THRESHOLD;
                     }
                 }
 
@@ -256,6 +261,21 @@ public class YoloV3Classifier implements Classifier {
         }
 
         return recognitions;
+    }
+
+    private double iou(RectF box1, RectF box2){
+        float int_x0 = Math.max(box1.left, box2.left);
+        float int_y0 = Math.max(box1.top, box2.top);
+        float int_x1 = Math.min(box1.right, box2.right);
+        float int_y1 = Math.min(box1.bottom, box2.bottom);
+
+        float int_area = (int_x1 - int_x0) * (int_y1 - int_y0);
+
+        float box1_area = (box1.right - box1.left) * (box1.bottom - box1.top);
+        float box2_area = (box2.right - box2.left) * (box2.bottom - box2.top);
+
+        double iou = int_area / (box1_area + box2_area - int_area + 1e-05);
+        return iou;
     }
 
     private float getIntersectionProportion(RectF primaryShape, RectF secondaryShape) {

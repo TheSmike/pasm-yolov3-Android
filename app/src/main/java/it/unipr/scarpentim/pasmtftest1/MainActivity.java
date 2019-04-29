@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     Mat mRgbaF;
     Mat mRgbaT;
 
-    private static final String TAG = "PASM-yolov3";
+    private static final String TAG = "PASM_yolov3";
     private static final int SELECT_PICTURE = 1;
     private String selectedImagePath;
     private Bitmap myBitmap = null;

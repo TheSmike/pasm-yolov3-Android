@@ -39,7 +39,7 @@ import static org.junit.Assert.*;
 @RunWith(AndroidJUnit4.class)
 public class Yolov2FromDarkFlowTest {
 
-    private static final String TAG = "pasm-YoloV2Classifier";
+    private static final String TAG = "PASM_yolov3";
     Context appContext = InstrumentationRegistry.getTargetContext();
     private static final String MODEL_FILE = "file:///android_asset/yolov2-tiny.pb";
 

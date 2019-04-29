@@ -121,7 +121,7 @@ public class YoloV2Classifier implements Classifier {
             "hair drier",
             "toothbrush",
     };
-    private static final String TAG = "pasm-YoloV2Classifier";
+    private static final String TAG = "PASM_yolov3";
 
     // Config values.
     private String inputName;

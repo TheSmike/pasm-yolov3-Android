@@ -39,7 +39,7 @@ import java.util.Vector;
  */
 public class TensorFlowImageClassifier implements Classifier {
 
-    private static final String TAG = "ImageClassifier";
+    private static final String TAG = "PASM_yolov3";
 
     // Only return this many results with at least this confidence.
     private static final int MAX_RESULTS = 1;

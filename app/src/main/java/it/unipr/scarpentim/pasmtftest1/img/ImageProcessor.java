@@ -24,7 +24,7 @@ import static org.opencv.core.Core.LINE_AA;
 
 public class ImageProcessor {
 
-    private static final String TAG = "pasm-YoloV2Classifier";
+    private static final String TAG = "PASM_yolov3";
 
     private Mat rgbImage = new Mat();
     private Mat boxesImage = new Mat();
