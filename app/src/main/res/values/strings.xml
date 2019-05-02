@@ -1,5 +1,9 @@
 <resources>
-    <string name="app_name">pasm-YOLOv3-Android</string>
-    <string name="action_OpenGallery">Apri Galleria</string>
-    <string name="action_OpenCamera">Torna a Camera</string>
+    <string name="app_name">YOLOv3 for Android</string>
+    <string name="action_OpenGallery">Open Gallery</string>
+    <string name="action_OpenCamera">Come back to Camera</string>
+    <string name="captured_image">Captured Image</string>
+    <string name="preview_from_gallery">preview from gallery</string>
+    <string name="classify">Classify</string>
+    <string name="press_button">Pres the button</string>
 </resources>

@@ -8,23 +8,42 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <org.opencv.android.JavaCameraView
-        android:id="@+id/cameraView1"
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/button"
-        android:layout_marginBottom="0dp"
-        android:visibility="visible"
-        opencv:camera_id="back"
-        opencv:show_fps="true" />
+        android:layout_height="match_parent"
+        android:layout_above="@+id/button">
 
-    <ImageView
-        android:id="@+id/imageView1"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="0dp"
-        android:layout_above="@+id/button"
-        android:visibility="gone" />
+        <org.opencv.android.JavaCameraView
+            android:id="@+id/cameraView1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="0dp"
+            android:visibility="visible"
+            opencv:camera_id="back"
+            opencv:show_fps="true" />
+
+        <ImageView
+            android:id="@+id/ivGallery"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:layout_marginBottom="0dp"
+            tools:srcCompat="@tools:sample/avatars"
+            android:contentDescription="@string/preview_from_gallery" />
+
+        <ImageView
+            android:id="@+id/ivPreview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:background="@drawable/imageview_border"
+            android:contentDescription="@string/captured_image"
+            android:onClick="hideRecognizedImage"
+            android:padding="3dp"
+            android:visibility="invisible" />
+        <!--android:layout_marginBottom="0dp"-->
+
+    </RelativeLayout>
 
     <Button
         android:id="@+id/button"
@@ -33,7 +52,7 @@
         android:layout_above="@+id/textView"
         android:layout_marginBottom="0dp"
         android:onClick="classify"
-        android:text="Classifica" />
+        android:text="@string/classify" />
 
     <TextView
         android:id="@+id/textView"
@@ -41,16 +60,8 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_marginBottom="0dp"
-        android:text="premi il bottone"
+        android:text="@string/press_button"
         android:textAlignment="center"
         android:textSize="18sp" />
-
-    <ImageView
-        android:id="@+id/ivGallery"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignBottom="@+id/cameraView1"
-        android:layout_marginBottom="0dp"
-        tools:srcCompat="@tools:sample/avatars" />
 
 </RelativeLayout>

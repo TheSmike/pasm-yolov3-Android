@@ -221,7 +221,7 @@ public class YoloV3Classifier implements Classifier {
 
                     final float confidenceInClass = maxClass * confidence;
                     if (confidenceInClass > 0.01) {
-                        Log.i(TAG, String.format("%s (%d) %f %s", labels[detectedClass], detectedClass, confidenceInClass, rect));
+                        Log.v(TAG, String.format("%s (%d) %f %s", labels[detectedClass], detectedClass, confidenceInClass, rect));
                         pq.add(new Recognition("" + offset, labels[detectedClass], confidenceInClass, rect));
                     }
                 }

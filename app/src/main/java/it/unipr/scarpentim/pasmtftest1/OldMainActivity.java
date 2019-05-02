@@ -211,7 +211,7 @@ public class OldMainActivity extends AppCompatActivity implements CameraBridgeVi
             else
                 tv.setText("This is.... Not a super hero");
 
-            ImageView iv = findViewById(R.id.imageView1);
+            ImageView iv = findViewById(R.id.ivPreview);
             iv.setImageBitmap(smallBitmap);
 //            mOpenCvCameraView.enableView();
 //            mOpenCvCameraView.setVisibility(View.VISIBLE);
@@ -223,7 +223,7 @@ public class OldMainActivity extends AppCompatActivity implements CameraBridgeVi
         protected void onProgressUpdate(Bitmap... values) {
             Log.i(TAG, "### onProgressUpdate called!!");
             super.onProgressUpdate(values[0]);
-            ImageView iv = findViewById(R.id.imageView1);
+            ImageView iv = findViewById(R.id.ivPreview);
             iv.setImageBitmap(values[0]);
             iv.setVisibility(View.VISIBLE);
         }

@@ -6,14 +6,17 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Point;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Display;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceView;
@@ -35,10 +38,16 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
+import it.unipr.scarpentim.pasmtftest1.img.ImageProcessor;
+import it.unipr.scarpentim.pasmtftest1.img.ImageSaver;
 import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
-import it.unipr.scarpentim.pasmtftest1.tensorflow.TensorFlowImageClassifier;
+import it.unipr.scarpentim.pasmtftest1.yolo.YoloV3Classifier;
 
 public class MainActivity extends AppCompatActivity implements CameraBridgeViewBase.CvCameraViewListener2 {
 
@@ -62,15 +71,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     private Menu mOptionsMenu;
 
 
-    private static final int INPUT_WIDTH = 300;
-    private static final int INPUT_HEIGHT = 300;
-    private static final int IMAGE_MEAN = 128;
-    private static final float IMAGE_STD = 128f;
-    private static final String INPUT_NAME = "Mul";
-    private static final String OUTPUT_NAME = "final_result";
-    private static final String MODEL_FILE = "file:///android_asset/hero_stripped_graph.pb";
-    private static final String LABEL_FILE = "file:///android_asset/hero_labels.txt";
+    private static final int INPUT_SIZE = 416;
+    private static final String INPUT_LAYER_NAME = "yolov3-tiny/net1";
+    private static final String OUTPUT_LAYER_NAME = "yolov3-tiny/convolutional10/BiasAdd,yolov3-tiny/convolutional13/BiasAdd";
+    private static final int[] TINY_YOLO_BLOCK_SIZE = {32, 16};
+
+    private static final String MODEL_FILE = "ultimate_yolov3-tiny";
     private Mat rgbImage;
+    private ImageSaver imageSaver;
 
 
     @Override
@@ -80,13 +88,14 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
 
         setContentView(R.layout.activity_main);
         validateCameraPermission();
-
+        classifier = initClassifier();
+        imageSaver = new ImageSaver();
+        imageSaver.createFolderIfNotExist();
         mOpenCvCameraView= findViewById(R.id.cameraView1);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
 
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -99,13 +108,15 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_openGallery) {
+            decreasePreview();
             validateReadStoragePermission();
             Intent intent = new Intent();
             intent.setType("image/*");
             intent.setAction(Intent.ACTION_PICK);
-            startActivityForResult(Intent.createChooser(intent,"Seleziona immagine"), SELECT_PICTURE);
+            startActivityForResult(Intent.createChooser(intent,"Select an image"), SELECT_PICTURE);
             return true;
         }else if (id == R.id.action_openCamera) {
+            decreasePreview();
             ImageView iv = findViewById(R.id.ivGallery);
             iv.setVisibility(View.GONE);
             myBitmap = null;
@@ -118,6 +129,8 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
     Bitmap smallBitmap = null;
 
     public void classify(View view) {
+
+        enlargePreview();
 
         Mat mRgbaTemp = mRgba.clone();
         //mOpenCvCameraView.disableView();
@@ -164,55 +177,66 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION,this, mLoaderCallback);
     }
 
-    private class ComputeTask extends AsyncTask<Mat, Bitmap, List<Classifier.Recognition>>{
+    public void hideRecognizedImage(View view) {
+
+        togglePreviewSize();
+    }
+
+    private class ComputeTask extends AsyncTask<Mat, Bitmap, Mat>{
 
         @Override
-        protected List<Classifier.Recognition> doInBackground(Mat... mats) {
+        protected Mat doInBackground(Mat... mats) {
             Mat mRgbaTemp = mats[0];
+            ImageProcessor processor = new ImageProcessor(getApplicationContext(), classifier.getLabels());
             if (myBitmap != null){
-                smallBitmap = Bitmap.createScaledBitmap(myBitmap, INPUT_WIDTH, INPUT_HEIGHT, false);
-            }else{
+                smallBitmap = Bitmap.createScaledBitmap(myBitmap, INPUT_SIZE, INPUT_SIZE, false);
+                Display display = getWindowManager().getDefaultDisplay();
+                Point size = new Point();
+                display.getSize(size);
+                int width = size.x;
+                int height = size.y;
 
-                smallBitmap = Bitmap.createBitmap(INPUT_WIDTH, INPUT_HEIGHT, Bitmap.Config.RGB_565);
+                float ratio = (float)myBitmap.getWidth() / (float)myBitmap.getHeight();
+                Bitmap reducedBitmap = Bitmap.createScaledBitmap(myBitmap, (int) (height * ratio), height, false);
+
+                this.publishProgress(reducedBitmap);
+                processor.loadImage(myBitmap, INPUT_SIZE, INPUT_SIZE);
+            }else{
+                smallBitmap = Bitmap.createBitmap(INPUT_SIZE, INPUT_SIZE, Bitmap.Config.RGB_565);
                 Bitmap bigBitmap = Bitmap.createBitmap(mRgbaF.width(), mRgbaF.height(), Bitmap.Config.RGB_565);
-                Mat mRgbaFixedSize = new Mat(INPUT_WIDTH, INPUT_HEIGHT, CvType.CV_8UC4);
+                Mat mRgbaFixedSize = new Mat(INPUT_SIZE, INPUT_SIZE, CvType.CV_8UC4);
 
                 Core.transpose(mRgbaTemp, mRgbaT);
                 Imgproc.resize(mRgbaT, mRgbaF, mRgbaF.size(), 0,0, 0);
                 Core.flip(mRgbaF, mRgbaTemp, 1 );
 
-                Imgproc.resize(mRgbaTemp, mRgbaFixedSize, new Size(INPUT_WIDTH, INPUT_HEIGHT), 0,0, 0);
+                Imgproc.resize(mRgbaTemp, mRgbaFixedSize, new Size(INPUT_SIZE, INPUT_SIZE), 0,0, 0);
 
                 Utils.matToBitmap(mRgbaFixedSize, smallBitmap);
                 Utils.matToBitmap(mRgbaTemp, bigBitmap);
 
                 this.publishProgress(bigBitmap);
-
-
+                processor.loadImage(bigBitmap, INPUT_SIZE, INPUT_SIZE);
                 //OLD Toast.makeText(getApplicationContext(), "Nessuna immagine caricata", Toast.LENGTH_SHORT).show();
             }
 
             List<Classifier.Recognition> recognitions = classifier.recognizeImage(smallBitmap);
-            return  recognitions;
+            Mat mat = processor.drawBoxes(recognitions, 0.2);
+            imageSaver.save(mat); // remove for realtime processing!
+            return mat;
         }
 
         @Override
-        protected void onPostExecute(List<Classifier.Recognition> result) {
+        protected void onPostExecute(Mat result) {
+            ImageView ivGallery = findViewById(R.id.ivGallery);
+            ivGallery.setVisibility(View.GONE);
+            ImageView iv = findViewById(R.id.ivPreview);
+            Bitmap bigBitmap = Bitmap.createBitmap(result.width(), result.height(), Bitmap.Config.RGB_565);
+            Utils.matToBitmap(result, bigBitmap);
+            iv.setImageBitmap(bigBitmap);
+            iv.setVisibility(View.VISIBLE);
             TextView tv = findViewById(R.id.textView);
-            Log.i(TAG, String.valueOf(result));
-            for (Classifier.Recognition recognition : result) {
-                Log.i(TAG, "results: " + recognition.getTitle() + " " + recognition.getConfidence());
-            }
-            if (result.size() > 0)
-                tv.setText("This is.... " + result.get(0).getTitle());
-            else
-                tv.setText("This is.... Not a super hero");
-
-            ImageView iv = findViewById(R.id.imageView1);
-            iv.setImageBitmap(smallBitmap);
-//            mOpenCvCameraView.enableView();
-//            mOpenCvCameraView.setVisibility(View.VISIBLE);
-
+            tv.setText("Done!");
 
         }
 
@@ -220,9 +244,10 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         protected void onProgressUpdate(Bitmap... values) {
             Log.i(TAG, "### onProgressUpdate called!!");
             super.onProgressUpdate(values[0]);
-            ImageView iv = findViewById(R.id.imageView1);
+            ImageView iv = findViewById(R.id.ivPreview);
             iv.setImageBitmap(values[0]);
             iv.setVisibility(View.VISIBLE);
+            Log.i(TAG, "h - w --> " + values[0].getHeight() + " - " + values[0].getWidth());
         }
     }
 
@@ -258,6 +283,7 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
                 myBitmap = BitmapFactory.decodeFile(selectedImagePath);
                 ImageView iv = findViewById(R.id.ivGallery);
                 iv.setImageBitmap(myBitmap);
+                iv.setVisibility(View.VISIBLE);
             }
         }
     }
@@ -284,11 +310,17 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
         return uri.getPath();
     }
 
-    private void initClassifier() {
+    private Classifier initClassifier() {
         try {
-            classifier = TensorFlowImageClassifier.create(
-                    super.getAssets(), MODEL_FILE, LABEL_FILE, INPUT_WIDTH, INPUT_HEIGHT,
-                    IMAGE_MEAN, IMAGE_STD, INPUT_NAME, OUTPUT_NAME);
+            return YoloV3Classifier.create(
+                    super.getAssets(),
+                    MODEL_FILE,
+                    INPUT_SIZE,
+                    INPUT_LAYER_NAME,
+                    OUTPUT_LAYER_NAME,
+                    TINY_YOLO_BLOCK_SIZE,
+                    0);
+
         } catch (IOException e) {
             throw new RuntimeException("classifier init problem", e);
         }
@@ -313,4 +345,40 @@ public class MainActivity extends AppCompatActivity implements CameraBridgeViewB
             }
         }
     };
+
+
+    boolean isPreviewLarge = true;
+
+    private void enlargePreview(){
+        if (!isPreviewLarge) {
+            transformPreview(1);
+            isPreviewLarge = true;
+        }
+    }
+
+    private void decreasePreview(){
+        if (isPreviewLarge) {
+            transformPreview(-1);
+            isPreviewLarge = false;
+        }
+    }
+
+    private void togglePreviewSize(){
+        if (isPreviewLarge) {
+            transformPreview(-1);
+            isPreviewLarge = false;
+        }else {
+            transformPreview(1);
+            isPreviewLarge = true;
+        }
+    }
+
+    private void transformPreview(int sign) {
+
+        findViewById(R.id.ivPreview).animate()
+                .translationXBy(-550f * sign)
+                .translationYBy(-650f * sign)
+                .scaleYBy(0.75f * sign)
+                .scaleXBy(0.75f * sign);
+    }
 }

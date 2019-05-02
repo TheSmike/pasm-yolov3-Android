@@ -73,7 +73,7 @@ public class ImageProcessor {
                 Point pt2 = new Point(box.getLocation().right * widthRatio, box.getLocation().bottom * heightRatio);
                 Imgproc.rectangle(boxesImage, pt1, pt2, color, 3, 8);
                 Point pt3 = new Point(box.getLocation().left * widthRatio, box.getLocation().top * heightRatio);
-                Point pt4 = new Point(Math.min(box.getLocation().right, box.getLocation().left + (box.getTitle().length() * 7)) * widthRatio, (box.getLocation().top + 11) * heightRatio);
+                Point pt4 = new Point(Math.min(box.getLocation().right, box.getLocation().left + (box.getTitle().length() * 13)) * widthRatio, (box.getLocation().top + 11) * heightRatio);
                 Imgproc.rectangle(boxesImage, pt3, pt4, color, FILLED,8);
 
                 pt1.set(new double[] {pt1.x + 2*heightRatio, (pt1.y + 10*heightRatio)});
