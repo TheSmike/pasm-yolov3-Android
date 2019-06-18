@@ -63,21 +63,23 @@ public class ImageProcessor {
 
         for (Classifier.Recognition box : boxes) {
             Log.i(TAG, String.valueOf(box));
-            if (box.getConfidence() > confidenceThreshold) {
+            if (box.getTitle().equals("person")) {
+                if (box.getConfidence() > confidenceThreshold) {
 //                color.val[0] = (color.val[0] + 25) % 255;
 //                color.val[1] = (color.val[1] + 35) % 255;
 //                color.val[2] = (color.val[2] + 45) % 255;
-                color = colors.get(box.getTitle());
+                    color = colors.get(box.getTitle());
 
-                Point pt1 = new Point(box.getLocation().left * widthRatio, box.getLocation().top * heightRatio);
-                Point pt2 = new Point(box.getLocation().right * widthRatio, box.getLocation().bottom * heightRatio);
-                Imgproc.rectangle(boxesImage, pt1, pt2, color, 3, 8);
-                Point pt3 = new Point(box.getLocation().left * widthRatio, box.getLocation().top * heightRatio);
-                Point pt4 = new Point(Math.min(box.getLocation().right, box.getLocation().left + (box.getTitle().length() * 13)) * widthRatio, (box.getLocation().top + 11) * heightRatio);
-                Imgproc.rectangle(boxesImage, pt3, pt4, color, FILLED,8);
+                    Point pt1 = new Point(box.getLocation().left * widthRatio, box.getLocation().top * heightRatio);
+                    Point pt2 = new Point(box.getLocation().right * widthRatio, box.getLocation().bottom * heightRatio);
+                    Imgproc.rectangle(boxesImage, pt1, pt2, color, 3, 8);
+                    Point pt3 = new Point(box.getLocation().left * widthRatio, box.getLocation().top * heightRatio);
+                    Point pt4 = new Point(Math.min(box.getLocation().right, box.getLocation().left + (box.getTitle().length() * 13)) * widthRatio, (box.getLocation().top + 11) * heightRatio);
+                    Imgproc.rectangle(boxesImage, pt3, pt4, color, FILLED, 8);
 
-                pt1.set(new double[] {pt1.x + 2*heightRatio, (pt1.y + 10*heightRatio)});
-                Imgproc.putText(boxesImage, box.getTitle(), pt1, Core.FONT_HERSHEY_SIMPLEX, 0.4 * heightRatio, (isLight(color)?BLACK:WHITE), (int) (1 * heightRatio), LINE_AA);
+                    pt1.set(new double[]{pt1.x + 2 * heightRatio, (pt1.y + 10 * heightRatio)});
+                    Imgproc.putText(boxesImage, box.getTitle(), pt1, Core.FONT_HERSHEY_SIMPLEX, 0.4 * heightRatio, (isLight(color) ? BLACK : WHITE), (int) (1 * heightRatio), LINE_AA);
+                }
             }
         }
 

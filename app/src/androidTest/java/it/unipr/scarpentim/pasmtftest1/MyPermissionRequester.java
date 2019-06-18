@@ -5,7 +5,6 @@ import android.os.Build;
 import android.support.test.InstrumentationRegistry;
 import android.util.Log;
 
-import androidx.test.rule.GrantPermissionRule;
 
 public class MyPermissionRequester {
 

@@ -23,13 +23,13 @@ import it.unipr.scarpentim.pasmtftest1.tensorflow.Classifier;
 public class YoloV3Classifier implements Classifier {
 
     // Only return this many results with at least this confidence.
-    private static final int MAX_RESULTS = 15;
+    private static final int MAX_RESULTS = 100;
 
     private static final int NUM_CLASSES = 80;
 
     private static final int NUM_BOXES_PER_BLOCK = 3 ;
 
-    private final static float OVERLAP_THRESHOLD = 0.5f;
+    private final static float OVERLAP_THRESHOLD = 0.25f;
     public static final String FILE_ANDROID_ASSET = "file:///android_asset/";
 
     private int[] anchors;
@@ -76,6 +76,7 @@ public class YoloV3Classifier implements Classifier {
         String labelsFilename = modelName + "-labels.txt";
         String anchorsFilename = modelName + "-anchors.txt";
 
+        //
         d.inferenceInterface = new TensorFlowInferenceInterface(assetManager, FILE_ANDROID_ASSET + modelFilename);
 
         InputStream labelsFile = assetManager.open(labelsFilename);
@@ -123,7 +124,8 @@ public class YoloV3Classifier implements Classifier {
         long startProcessingOut = System.currentTimeMillis();
         final ArrayList<Recognition> recognitions = new ArrayList<>();
         for (int i = 0; i < blockSize.length; i++) {
-
+//            if (i != 1)
+//                continue;
             // Copy the output Tensor back into the output array.
             Trace.beginSection("fetch i");
             int gridWidth = bitmap.getWidth() / blockSize[i];
@@ -142,6 +144,55 @@ public class YoloV3Classifier implements Classifier {
         Log.i(TAG, "       Network time = " + (endNetwork - startNetwork));
         Log.i(TAG, "postprocessing time = " + (endProcessingOut - startProcessingOut));
         return recognitions;
+    }
+
+    public float[][] fetch(final Bitmap bitmap) {
+        // Log this method so that it can be analyzed with systrace.
+        Trace.beginSection("recognizeImage");
+
+        Trace.beginSection("preprocessBitmap");
+        // Preprocess the image data from 0-255 int to normalized float based
+        // on the provided parameters.
+        bitmap.getPixels(intValues, 0, bitmap.getWidth(), 0, 0, bitmap.getWidth(), bitmap.getHeight());
+
+        for (int i = 0; i < intValues.length; ++i) {
+            floatValues[i * 3 + 0] = ((intValues[i] >> 16) & 0xFF) / 255.0f;
+            floatValues[i * 3 + 1] = ((intValues[i] >> 8) & 0xFF) / 255.0f;
+            floatValues[i * 3 + 2] = (intValues[i] & 0xFF) / 255.0f;
+        }
+        Trace.endSection(); // preprocessBitmap
+
+        // Copy the input data into TensorFlow.
+        Trace.beginSection("feed");
+        inferenceInterface.feed(inputName, floatValues, 1, inputSize, inputSize, 3);
+        Trace.endSection();
+
+        // Run the inference call.
+        Trace.beginSection("run");
+        inferenceInterface.run(outputNames, logStats);
+        Trace.endSection();
+
+        final float[][] finalOutput = new float[blockSize.length][];
+        for (int i = 0; i < blockSize.length; i++) {
+            if (i != 1)
+                continue;
+
+            // Copy the output Tensor back into the output array.
+            Trace.beginSection("fetch i");
+            int gridWidth = bitmap.getWidth() / blockSize[i];
+            int gridHeight = bitmap.getHeight() / blockSize[i];
+
+            final float[] output = new float[gridWidth * gridHeight * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK];
+            Log.d(TAG,  String.format("output0 size is --> %d * %d * (%d + 5) * %d = %d", gridWidth, gridHeight, NUM_CLASSES, NUM_BOXES_PER_BLOCK, gridWidth * gridHeight * (NUM_CLASSES + 5) * NUM_BOXES_PER_BLOCK ));
+            inferenceInterface.fetch(outputNames[i], output);
+            Trace.endSection();
+
+            finalOutput[i] = output;
+        }
+
+        Trace.endSection(); // "recognizeImage"
+
+        return finalOutput;
     }
 
 
@@ -189,8 +240,8 @@ public class YoloV3Classifier implements Classifier {
                                     + (NUM_CLASSES + 5) * b;
 
 
-                    final float xPos = (x + centerOffset + expit(networkOutput[offset + 0])) * blockSize;
-                    final float yPos = (y + centerOffset + expit(networkOutput[offset + 1])) * blockSize;
+                    final float xPos = (x + centerOffset + expit(networkOutput[offset + 0])) * blockSize ;
+                    final float yPos = (y + centerOffset + expit(networkOutput[offset + 1])) * blockSize ;
 
                     final float w = (float) (Math.exp(networkOutput[offset + 2]) * anchors[anchorOffset * 6 + 2 * b + 0]);
                     final float h = (float) (Math.exp(networkOutput[offset + 3]) * anchors[anchorOffset * 6 + 2 * b + 1]);
@@ -210,25 +261,129 @@ public class YoloV3Classifier implements Classifier {
                     for (int c = 0; c < NUM_CLASSES; ++c) {
                         classes[c] = networkOutput[offset + 5 + c]; //percentage of each class
                     }
-                    softmax(classes);
+//                    softmax(classes);
 
-                    for (int c = 0; c < NUM_CLASSES; ++c) {
-                        if (classes[c] > maxClass) {
-                            detectedClass = c;
-                            maxClass = classes[c];
+//                    for (int c = 0; c < NUM_CLASSES; ++c) {
+//                        if (classes[c] > maxClass) {
+//                            detectedClass = c;
+//                            maxClass = classes[c];
+//                        }
+//                    }
+//                    final float confidenceInClass = maxClass * confidence;
+//                    //if (confidenceInClass > 0.01) {
+//                        Log.v(TAG, String.format("%s (%d) %f %s", labels[detectedClass], detectedClass, confidenceInClass, rect));
+//                        pq.add(new Recognition("" + offset, labels[detectedClass], confidenceInClass, rect));
+//
+//                    //}
+
+
+//                    if (b != 0)
+//                        continue;
+                    for (int c = 0; c < NUM_CLASSES; c++) {
+                        final float confidenceInClass = classes[c] * confidence;
+                        if (confidenceInClass > 0.001) {
+                            Log.v(TAG, String.format("%s (%d) %f %s", labels[c], c, confidenceInClass, rect));
+                            pq.add(new Recognition("" + offset, labels[c], confidenceInClass, rect));
                         }
                     }
 
-                    final float confidenceInClass = maxClass * confidence;
-                    if (confidenceInClass > 0.01) {
-                        Log.v(TAG, String.format("%s (%d) %f %s", labels[detectedClass], detectedClass, confidenceInClass, rect));
-                        pq.add(new Recognition("" + offset, labels[detectedClass], confidenceInClass, rect));
-                    }
                 }
             }
         }
 
         getRecognition(recognitions, pq);
+    }
+
+    public ArrayList<Recognition> debugAndTestpopulateRecognitions(float[][] networkOutputs, Bitmap bitmap) {
+
+        final ArrayList<Recognition> recognitions = new ArrayList<>();
+
+        for (int i = 0; i < networkOutputs.length; i++) {
+
+            if (i != 1)
+                continue;
+
+            int gridWidth = bitmap.getWidth() / blockSize[i];
+            int gridHeight = bitmap.getHeight() / blockSize[i];
+            int anchorOffset = i;
+            float[] networkOutput = networkOutputs[i];
+            int blockSize = this.blockSize[i];
+
+
+            // Find the best detections.
+            final PriorityQueue<Recognition> pq =
+                    new PriorityQueue<Recognition>(
+                            1,
+                            new Comparator<Recognition>() {
+                                @Override
+                                public int compare(final Recognition lhs, final Recognition rhs) {
+                                    // Intentionally reversed to put high confidence at the head of the queue.
+                                    return Float.compare(rhs.getConfidence(), lhs.getConfidence());
+                                }
+                            });
+
+            int y;
+            int x;
+            for (y = 0; y < gridHeight; ++y) {
+                for (x = 0; x < gridWidth; ++x) {
+                    for (int b = 0; b < NUM_BOXES_PER_BLOCK; ++b) {
+                        final int offset =
+                                (gridWidth * (NUM_BOXES_PER_BLOCK * (NUM_CLASSES + 5))) * y
+                                        + (NUM_BOXES_PER_BLOCK * (NUM_CLASSES + 5)) * x
+                                        + (NUM_CLASSES + 5) * b;
+
+                        final float xPos = (x + centerOffset + expit(networkOutput[offset + 0])) * blockSize;
+                        final float yPos = (y + centerOffset + expit(networkOutput[offset + 1])) * blockSize;
+
+                        final float w = (float) (Math.exp(networkOutput[offset + 2]) * anchors[anchorOffset * 6 + 2 * b + 0]);
+                        final float h = (float) (Math.exp(networkOutput[offset + 3]) * anchors[anchorOffset * 6 + 2 * b + 1]);
+
+                        final RectF rect =
+                                new RectF(
+                                        Math.max(0, xPos - w / 2),
+                                        Math.max(0, yPos - h / 2),
+                                        Math.min(bitmap.getWidth() - 1, xPos + w / 2),
+                                        Math.min(bitmap.getHeight() - 1, yPos + h / 2));
+                        final float confidence = expit(networkOutput[offset + 4]);
+
+                        int detectedClass = -1;
+                        float maxClass = 0;
+
+                        final float[] classes = new float[NUM_CLASSES];
+                        for (int c = 0; c < NUM_CLASSES; ++c) {
+                            classes[c] = networkOutput[offset + 5 + c]; //percentage of each class
+                        }
+                        //softmax(classes);
+
+    //                    for (int c = 0; c < NUM_CLASSES; ++c) {
+    //                        if (classes[c] > maxClass) {
+    //                            detectedClass = c;
+    //                            maxClass = classes[c];
+    //                        }
+    //                    }
+    //                    final float confidenceInClass = maxClass * confidence;
+    //                    //if (confidenceInClass > 0.01) {
+    //                        Log.v(TAG, String.format("%s (%d) %f %s", labels[detectedClass], detectedClass, confidenceInClass, rect));
+    //                        pq.add(new Recognition("" + offset, labels[detectedClass], confidenceInClass, rect));
+    //
+    //                    //}
+
+                        for (int c = 0; c < NUM_CLASSES; c++) {
+                            final float confidenceInClass = classes[c] * confidence;
+                            if (confidenceInClass > 0.0005 * (Math.pow(10,i))) {
+                                Log.v(TAG, String.format("%s (%d) %f %s", labels[c], c, confidenceInClass, rect));
+                                pq.add(new Recognition("" + offset, labels[c], confidenceInClass, rect));
+                            }
+                        }
+
+                    }
+                }
+            }
+            getRecognition(recognitions, pq);
+        }
+
+        return recognitions;
+
     }
 
     private List<Recognition> getRecognition(ArrayList<Recognition> recognitions, final PriorityQueue<Recognition> priorityQueue) {
@@ -257,6 +412,14 @@ public class YoloV3Classifier implements Classifier {
                     recognitions.add(recognition);
                     i++;
                 }
+
+//              tmp //commentami
+//                Recognition recognition = priorityQueue.poll();
+//                if (recognition == null)
+//                    break;
+//                recognitions.add(recognition);
+
+
             }
         }
 

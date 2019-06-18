@@ -49,6 +49,7 @@ public class Yolov3DrawRectTest {
     private static final int YOLO_INPUT_SIZE = 608;
 
     private static final int[] YOLO_BLOCK_SIZE = {32, 16, 8};
+//    private static final int[] YOLO_BLOCK_SIZE = {8, 16, 32};
 
     public static final String SAMPLE_IMG = "cargo-bike-with-dog-flickr-grrsh.jpg";
 
@@ -91,7 +92,7 @@ public class Yolov3DrawRectTest {
 
                 ImageProcessor processor = new ImageProcessor(testContext, detector.getLabels());
                 processor.loadImage(loadedImage, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
-                Mat mat = processor.drawBoxes(recognitions, 0.3);
+                Mat mat = processor.drawBoxes(recognitions, 0);
                 Mat ultimate = new Mat();
                 Imgproc.cvtColor(mat, ultimate, Imgproc.COLOR_RGB2BGR);
 
